@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  password            String
+  name                String
+  createdAt           DateTime             @default(now())
+  otps                OTP[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Operator {
+  id             Int                     @id @default(autoincrement())
+  phone          String                  @unique
+  username       String?
+  profileImage   String?
+  createdAt      DateTime                @default(now())
+  alertStatuses  OperatorAlertStatus[]
+  otps           OperatorOTP[]
+  productUpdates OperatorProductUpdate[]
+}
+
+model OperatorOTP {
+  id         Int      @id @default(autoincrement())
+  operatorId Int
+  code       String
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  operator   Operator @relation(fields: [operatorId], references: [id])
+}
+
+model Alert {
+  id         Int                   @id @default(autoincrement())
+  senderId   Int?
+  message    String
+  icon       String?
+  createdAt  DateTime              @default(now())
+  recipients OperatorAlertStatus[]
+}
+
+model Machine {
+  id     Int    @id @default(autoincrement())
+  name   String
+  status String
+  jobs   Job[]
+}
+
+model Product {
+  id           Int           @id @default(autoincrement())
+  name         String
+  jobs         Job[]
+  productCount ProductCount?
+}
+
+model Job {
+  id        Int      @id @default(autoincrement())
+  machineId Int
+  productId Int
+  state     String
+  stage     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  machine   Machine  @relation(fields: [machineId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model ProductCount {
+  id        Int      @id @default(autoincrement())
+  productId Int      @unique
+  count     Int      @default(0)
+  machine   String
+  stage     String
+  state     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model OperatorProductUpdate {
+  id             Int      @id @default(autoincrement())
+  operatorId     Int
+  product        String
+  processSteps   Json
+  dispatchStatus String
+  dispatchedCost Float
+  createdAt      DateTime @default(now())
+  archived       Boolean  @default(false)
+  quantity       Int      @default(1)
+  operator       Operator @relation(fields: [operatorId], references: [id])
+}
+
+model OperatorAlertStatus {
+  id         Int      @id @default(autoincrement())
+  operatorId Int
+  alertId    Int
+  read       Boolean  @default(false)
+  alert      Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  operator   Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([operatorId, alertId])
+}
+
+model DailyDispatchStats {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique @db.Date
+  totalAmount Float
+  totalCount  Int
+}
+
+model ReportDownload {
+  id           Int      @id @default(autoincrement())
+  reportName   String
+  downloadedAt DateTime @default(now())
+}
