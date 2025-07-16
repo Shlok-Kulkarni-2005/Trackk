@@ -16,11 +16,20 @@ export default function ProductListPage(): React.ReactElement {
   const [products, setProducts] = useState<Product[]>([]);
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
 
+  // Initial fetch on mount (if not cleared)
   useEffect(() => {
     async function fetchJobs() {
       const res = await fetch('/api/jobs');
       if (res.ok) {
         const data = await res.json();
+        // Get hidden IDs from localStorage
+        const hiddenIdsRaw = localStorage.getItem('productlist_hidden_ids');
+        let hiddenIds: number[] = [];
+        if (hiddenIdsRaw) {
+          try {
+            hiddenIds = JSON.parse(hiddenIdsRaw);
+          } catch {}
+        }
         // Group jobs by productId and keep only the latest job for each product
         const latestJobByProduct: { [productId: string]: any } = {};
         data.jobs.forEach((job: any) => {
@@ -32,7 +41,7 @@ export default function ProductListPage(): React.ReactElement {
             latestJobByProduct[productId] = job;
           }
         });
-        // Map to Product[] and sort by date descending
+        // Map to Product[] and sort by date descending, filter out hidden
         const productsArr = Object.values(latestJobByProduct)
           .map((job: any) => ({
             id: job.product.id,
@@ -41,11 +50,15 @@ export default function ProductListPage(): React.ReactElement {
             status: job.state,
             date: new Date(job.createdAt).toLocaleDateString(),
           }))
+          .filter((product: any) => !hiddenIds.includes(product.id))
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setProducts(productsArr);
       }
     }
     fetchJobs();
+    // Poll every 5 seconds for new jobs
+    const interval = setInterval(fetchJobs, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleMenuClick = (): void => {
@@ -63,11 +76,38 @@ export default function ProductListPage(): React.ReactElement {
 
   const confirmClearProducts = async (): Promise<void> => {
     try {
-      // Only clear the local state, don't delete from database
-      // This prevents affecting procount tab and other parts of the system
+      // Fetch all jobs from backend
+      let allIds: number[] = [];
+      try {
+        const res = await fetch('/api/jobs');
+        if (res.ok) {
+          const data = await res.json();
+          const idsSet = new Set<number>();
+          data.jobs.forEach((job: any) => {
+            idsSet.add(job.product.id);
+          });
+          allIds = Array.from(idsSet);
+        } else {
+          throw new Error('API returned error');
+        }
+      } catch (fetchError) {
+        // Fallback: hide only currently visible products
+        allIds = products.map((product) => product.id);
+        alert('Failed to fetch all jobs from backend. Only currently visible products will be hidden.');
+      }
+      // Merge with any already hidden
+      const hiddenIdsRaw = localStorage.getItem('productlist_hidden_ids');
+      let hiddenIds: number[] = [];
+      if (hiddenIdsRaw) {
+        try {
+          hiddenIds = JSON.parse(hiddenIdsRaw);
+        } catch {}
+      }
+      const merged = Array.from(new Set([...hiddenIds, ...allIds]));
+      localStorage.setItem('productlist_hidden_ids', JSON.stringify(merged));
       setProducts([]);
       setIsConfirmingClear(false);
-      console.log('Product list cleared (local view only)');
+      console.log('Product list cleared (hidden locally, all IDs or fallback)');
     } catch (error) {
       console.error('Error clearing product list:', error);
       alert('Failed to clear product list.');
