@@ -19,6 +19,7 @@ interface Product {
   date: string;
   expiryDate?: string; // Optional field to track product lifecycle
   state: 'ON' | 'OFF';
+  quantity: number; // Added for quantity display
 }
 
 
@@ -64,34 +65,56 @@ export default function WorkPanelInterface() {
       if (res.ok) {
         const data = await res.json();
         setAllJobs(data.jobs);
-        // Group jobs by productId and keep only the latest job for each product
-        const latestJobByProduct: { [productId: string]: any } = {};
+        // Group jobs by productId and machineId and aggregate ON/OFF counts
+        const jobsByProductMachine: { [key: string]: any[] } = {};
         data.jobs.forEach((job: any) => {
           const productId = job.product.id.toString();
-          if (
-            !latestJobByProduct[productId] ||
-            new Date(job.createdAt) > new Date(latestJobByProduct[productId].createdAt)
-          ) {
-            latestJobByProduct[productId] = job;
+          const machineId = job.machine.id.toString();
+          const key = `${productId}__${machineId}`;
+          if (!jobsByProductMachine[key]) jobsByProductMachine[key] = [];
+          jobsByProductMachine[key].push(job);
+        });
+        // Build productData with ON and OFF quantities for each (product, machine) pair
+        const products: Product[] = [];
+        Object.entries(jobsByProductMachine).forEach(([key, jobs]) => {
+          const onJobs = jobs.filter((j: any) => j.state === 'ON');
+          const offJobs = jobs.filter((j: any) => j.state === 'OFF');
+          const productId = jobs[0].product.id.toString();
+          const productName = jobs[0].product.name;
+          const machineName = jobs[0].machine.name;
+          if (onJobs.length > 0) {
+            products.push({
+              id: `${productId}__${machineName}__ON`,
+              name: productName,
+              operation: machineName,
+              date: new Date(onJobs[0].createdAt).toLocaleDateString(),
+              state: 'ON',
+              quantity: onJobs.length,
+            });
+          }
+          if (offJobs.length > 0) {
+            products.push({
+              id: `${productId}__${machineName}__OFF`,
+              name: productName,
+              operation: machineName,
+              date: new Date(offJobs[0].createdAt).toLocaleDateString(),
+              state: 'OFF',
+              quantity: offJobs.length,
+            });
           }
         });
-        // Map to Product[]
-        const products = Object.values(latestJobByProduct).map((job: any) => ({
-          id: job.product.id.toString(),
-          name: job.product.name,
-          operation: job.machine.name, // Show selected machine/process
-          date: new Date(job.createdAt).toLocaleDateString(),
-          state: job.state,
-        }));
         setProductData(products);
       }
     }
     fetchJobs();
   }, []);
 
-  // Helper to get all jobs for a product
-  const getJobsForProduct = (productId: string) => {
-    return allJobs.filter(job => job.product.id.toString() === productId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  // Helper to get all jobs for a product-machine pair
+  const getJobsForProduct = (productId: string, operation: string, state: 'ON' | 'OFF') => {
+    // productId is now like "123__Cutting MC/1__ON"
+    const [pid, machineName] = productId.split('__');
+    return allJobs.filter(job => job.product.id.toString() === pid && job.machine.name === operation && job.state === state)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   };
 
   // Helper to format duration as HH:mm:ss
@@ -118,11 +141,11 @@ export default function WorkPanelInterface() {
 
   // Ensure live and past products are mutually exclusive
   const getLiveProducts = (): Product[] => {
-    return productData.filter(product => product.state === 'ON');
+    return productData.filter(product => product.state === 'ON' && product.quantity > 0);
   };
 
   const getPastProducts = (): Product[] => {
-    return productData.filter(product => product.state === 'OFF');
+    return productData.filter(product => product.state === 'OFF' && product.quantity > 0);
   };
 
 
@@ -183,23 +206,42 @@ export default function WorkPanelInterface() {
             const refreshRes = await fetch('/api/jobs');
             if (refreshRes.ok) {
               const refreshData = await refreshRes.json();
-              const latestJobByProduct: { [productId: string]: any } = {};
+              const jobsByProductMachine: { [key: string]: any[] } = {};
               refreshData.jobs.forEach((job: any) => {
                 const productId = job.product.id.toString();
-                if (
-                  !latestJobByProduct[productId] ||
-                  new Date(job.createdAt) > new Date(latestJobByProduct[productId].createdAt)
-                ) {
-                  latestJobByProduct[productId] = job;
+                const machineId = job.machine.id.toString();
+                const key = `${productId}__${machineId}`;
+                if (!jobsByProductMachine[key]) jobsByProductMachine[key] = [];
+                jobsByProductMachine[key].push(job);
+              });
+              const products: Product[] = [];
+              Object.entries(jobsByProductMachine).forEach(([key, jobs]) => {
+                const onJobs = jobs.filter((j: any) => j.state === 'ON');
+                const offJobs = jobs.filter((j: any) => j.state === 'OFF');
+                const productId = jobs[0].product.id.toString();
+                const productName = jobs[0].product.name;
+                const machineName = jobs[0].machine.name;
+                if (onJobs.length > 0) {
+                  products.push({
+                    id: `${productId}__${machineName}__ON`,
+                    name: productName,
+                    operation: machineName,
+                    date: new Date(onJobs[0].createdAt).toLocaleDateString(),
+                    state: 'ON',
+                    quantity: onJobs.length,
+                  });
+                }
+                if (offJobs.length > 0) {
+                  products.push({
+                    id: `${productId}__${machineName}__OFF`,
+                    name: productName,
+                    operation: machineName,
+                    date: new Date(offJobs[0].createdAt).toLocaleDateString(),
+                    state: 'OFF',
+                    quantity: offJobs.length,
+                  });
                 }
               });
-              const products = Object.values(latestJobByProduct).map((job: any) => ({
-                id: job.product.id.toString(),
-                name: job.product.name,
-                operation: job.machine.name,
-                date: new Date(job.createdAt).toLocaleDateString(),
-                state: job.state,
-              }));
               setProductData(products);
             }
             setSelectedProduct(null);
@@ -352,11 +394,11 @@ export default function WorkPanelInterface() {
     </div>
   );
 
-  // Update renderProductList to show timer/duration
+  // Update renderProductList to use new getJobsForProduct signature
   const renderProductList = (products: Product[]) => (
     <div className="space-y-4">
       {products.map((product, idx) => {
-        const jobs = getJobsForProduct(product.id);
+        const jobs = getJobsForProduct(product.id, product.operation, product.state);
         let timingInfo = '';
         if (product.state === 'ON') {
           const lastOnJob = [...jobs].reverse().find(j => j.state === 'ON');
@@ -367,48 +409,36 @@ export default function WorkPanelInterface() {
         } else {
           // For past products: find ON job and OFF job, calculate duration
           const sortedJobs = [...jobs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-          
-          // Check if we have a single job that was updated from ON to OFF
           if (jobs.length === 1 && jobs[0].state === 'OFF') {
             const job = jobs[0];
             const duration = new Date(job.updatedAt || job.createdAt).getTime() - new Date(job.createdAt).getTime();
-            
             if (duration > 0) {
               timingInfo = `Final: ${formatDuration(duration)}`;
             } else {
-              // If duration is 0, it means the job was updated immediately
-              timingInfo = `Completed`;
-            }
-          } else {
-            // Multiple jobs - find the last OFF job and last ON job before it
-            const lastOffJob = sortedJobs.reverse().find(j => j.state === 'OFF');
-            
-            if (lastOffJob) {
-              // Find the last ON job before this OFF job
-              const jobsBeforeOff = sortedJobs.slice(sortedJobs.indexOf(lastOffJob) + 1);
-              const lastOnJob = jobsBeforeOff.reverse().find(j => j.state === 'ON');
-              
-              if (lastOnJob) {
-                // Standard calculation: OFF job time - ON job time
-                const offTime = new Date(lastOffJob.updatedAt || lastOffJob.createdAt).getTime();
-                const onTime = new Date(lastOnJob.createdAt).getTime();
-                const duration = offTime - onTime;
-                
-                if (duration > 0) {
-                  timingInfo = `Final: ${formatDuration(duration)}`;
-                } else {
-                  timingInfo = `Total: ${formatDuration(0)}`;
-                }
-              } else {
-                // No ON job found before OFF job
-                timingInfo = `Completed`;
-              }
-            } else {
-              // Fallback
               timingInfo = `Completed`;
             }
           }
+          const lastOffJob = sortedJobs.reverse().find(j => j.state === 'OFF');
+          if (lastOffJob) {
+            const jobsBeforeOff = sortedJobs.slice(sortedJobs.indexOf(lastOffJob) + 1);
+            const lastOnJob = jobsBeforeOff.reverse().find(j => j.state === 'ON');
+            if (lastOnJob) {
+              const offTime = new Date(lastOffJob.updatedAt || lastOffJob.createdAt).getTime();
+              const onTime = new Date(lastOnJob.createdAt).getTime();
+              const duration = offTime - onTime;
+              if (duration > 0) {
+                timingInfo = `Final: ${formatDuration(duration)}`;
+              } else {
+                timingInfo = `Total: ${formatDuration(0)}`;
+              }
+            } else {
+              timingInfo = `Completed`;
+            }
+          } else {
+            timingInfo = `Completed`;
+          }
         }
+        // Use product.quantity directly
         return (
           <div key={product.id + '-' + idx} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
@@ -420,6 +450,7 @@ export default function WorkPanelInterface() {
                   <p className="text-sm text-gray-500">Operation: {product.operation}</p>
                   <p className="text-xs text-gray-400">Date: {product.date}</p>
                   <p className={`text-xs font-semibold ${product.state === 'ON' ? 'text-green-600' : 'text-gray-500'}`}>State: {product.state}</p>
+                  <p className="text-xs font-semibold text-blue-600">Quantity: {product.quantity}</p>
                 </div>
               </div>
               <button
@@ -437,7 +468,7 @@ export default function WorkPanelInterface() {
 
   const renderDetailsView = () => {
     if (!selectedProduct) return null;
-    const jobs = getJobsForProduct(selectedProduct.id);
+    const jobs = getJobsForProduct(selectedProduct.id, selectedProduct.operation, selectedProduct.state);
     // Debug log to inspect jobs for the selected product
     console.log('Jobs for selected product:', jobs);
     // Calculate time using standard logic
