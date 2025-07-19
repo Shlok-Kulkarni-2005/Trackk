@@ -193,7 +193,7 @@ export default function DispatchedPage(): React.ReactElement {
               : 'text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Today&apos;s RFD
+          Todays RFD
         </button>
         <button
           onClick={() => setActiveSection('history')}
@@ -233,7 +233,7 @@ export default function DispatchedPage(): React.ReactElement {
                   <Package className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Today&apos;s RFD (Total Quantity)</p>
+                  <p className="text-xs text-gray-500">Todays RFD (Total Quantity)</p>
                   <p className="text-lg font-bold text-gray-900">{totalTodayRFDQuantity}</p>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export default function DispatchedPage(): React.ReactElement {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">
-              {activeSection === 'today' ? "Today&apos;s RFD" : 'RFD History'}
+              {activeSection === 'today' ? "Todays RFD" : 'RFD History'}
             </h3>
             <span className="text-sm text-gray-500">
               {activeSection === 'today' ? filteredTodayRFD.length : filteredHistoryRFD.length} items

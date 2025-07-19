@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
 
     const stream = new ReadableStream({
       start(controller) {
+        let closed = false;
         const sendEvent = (data: any) => {
+          if (closed) return;
           try {
             controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
           } catch (error) {
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
           clearInterval(interval);
           try {
             controller.close();
+            closed = true;
           } catch (error) {
             console.error('Error closing SSE stream:', error);
           }

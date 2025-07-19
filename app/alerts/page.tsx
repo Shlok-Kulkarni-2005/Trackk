@@ -44,9 +44,7 @@ export default function SeeAlertsPage() {
             timestamp: date.toLocaleString(),
             date,
           };
-        })
-        // Filter out System messages
-        .filter((alert: any) => alert.name !== 'System');
+        }); // Removed filter that excluded 'System' alerts
         setTodaysAlerts(alerts.filter((alert: any) => isTodayUTC(alert.date)));
         setPastAlerts(alerts.filter((alert: any) => !isTodayUTC(alert.date)));
       }
