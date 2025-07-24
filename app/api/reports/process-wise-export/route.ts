@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
         if (job.state === 'OFF') {
           const normalizedProductName = job.product?.name?.trim().toLowerCase() || '';
           const normalizedMachineName = normalizeMachineName(job.machine?.name || '');
-          const dateStr = new Date(job.createdAt).toISOString().split('T')[0];
+          const dateStr = new Date(job.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
           const machineNumber = getMachineNumber(job.machine.name);
           const totalMinutes = Math.round((new Date(job.updatedAt || job.createdAt).getTime() - new Date(job.createdAt).getTime()) / 60000) || 0;
           allRows.push({

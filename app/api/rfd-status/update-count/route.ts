@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       where: {
         productId: parseInt(productId),
         machine: {
-          name: 'RFD'
+          name: { contains: 'RFD', mode: 'insensitive' }
         },
         state: 'OFF'
       },
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       where: {
         productId: parseInt(productId),
         machine: {
-          name: 'RFD'
+          name: { contains: 'RFD', mode: 'insensitive' }
         },
         state: 'OFF'
       }

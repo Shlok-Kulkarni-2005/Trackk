@@ -21,7 +21,7 @@ export async function GET() {
     const rfdProducts = await prisma.job.findMany({
       where: {
         machine: {
-          name: 'RFD'
+          name: { contains: 'RFD', mode: 'insensitive' }
         },
         state: 'OFF'
       },

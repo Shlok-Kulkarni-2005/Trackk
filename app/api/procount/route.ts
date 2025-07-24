@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 // GET: Fetch all product counts
 export async function GET() {
   try {
-    // Get all jobs with RFD machine and OFF status, grouped by product
+    // Get all jobs with machine name containing 'RFD' (case-insensitive) and OFF status, grouped by product
     const jobs = await prisma.job.findMany({
       where: {
         machine: {
-          name: 'RFD'
+          name: { contains: 'RFD', mode: 'insensitive' }
         },
         state: 'OFF'
       },
@@ -23,7 +23,6 @@ export async function GET() {
 
     // Group by product and count occurrences
     const productCountsMap = new Map();
-    
     jobs.forEach(job => {
       const productId = job.product.id;
       if (!productCountsMap.has(productId)) {
@@ -42,7 +41,6 @@ export async function GET() {
     });
 
     const productCounts = Array.from(productCountsMap.values());
-    
     return NextResponse.json({ productCounts }, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch product counts:', error);
