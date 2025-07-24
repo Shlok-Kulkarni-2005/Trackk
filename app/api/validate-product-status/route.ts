@@ -48,11 +48,12 @@ export async function POST(req: NextRequest) {
       }, { status: 200 });
     }
 
-    // Get all jobs for this product on the selected machine, ordered by createdAt DESC
+    // Get all jobs for this product on the selected machine and stage, ordered by createdAt DESC
     const jobs = await prisma.job.findMany({
       where: {
         productId: product.id,
-        machineId: machineRecord.id
+        machineId: machineRecord.id,
+        stage: body.stage, // Only match jobs with the same process/stage
       },
       include: {
         machine: true
@@ -60,14 +61,14 @@ export async function POST(req: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Count how many jobs are in ON state for this product on this machine
+    // Count how many jobs are in ON state for this product on this machine and stage
     const onJobs = jobs.filter(job => job.state === 'ON');
     const availableQuantity = onJobs.length;
 
     if (availableQuantity === 0) {
       return NextResponse.json({ 
         canSetOff: false,
-        reason: 'Please turn on the product on this machine first'
+        reason: 'Please turn on the product on this machine and process first'
       }, { status: 200 });
     }
 
@@ -75,31 +76,13 @@ export async function POST(req: NextRequest) {
     if (requestedQuantity > availableQuantity) {
       return NextResponse.json({ 
         canSetOff: false,
-        reason: `Cannot turn OFF ${requestedQuantity} quantities. Only ${availableQuantity} quantities are available in ON state on this machine.`
+        reason: `Cannot turn OFF ${requestedQuantity} quantities. Only ${availableQuantity} quantities are available in ON state on this machine and process.`
       }, { status: 200 });
     }
 
-    // Check if the product is ON on any other machine
-    const otherMachineJobs = await prisma.job.findMany({
-      where: {
-        productId: product.id,
-        machineId: { not: machineRecord.id },
-        state: 'ON'
-      },
-      include: {
-        machine: true
-      }
-    });
+    // No need to check other machines or processes; allow independent OFF
 
-    if (otherMachineJobs.length > 0) {
-      const otherMachineNames = [...new Set(otherMachineJobs.map(job => job.machine.name))];
-      return NextResponse.json({
-        canSetOff: false,
-        reason: `Product is ON on other machine(s): ${otherMachineNames.join(', ')}. Please turn it OFF there first.`
-      }, { status: 200 });
-    }
-
-    // If we reach here, product is ON only on the selected machine and quantity is sufficient
+    // If we reach here, product is ON only on the selected machine and process and quantity is sufficient
     return NextResponse.json({ 
       canSetOff: true,
       reason: `Product can be turned OFF. ${availableQuantity} quantities available, ${requestedQuantity} requested.`,
@@ -109,6 +92,7 @@ export async function POST(req: NextRequest) {
         id: onJobs[0]?.id,
         name: product.name,
         machine: machineRecord.name,
+        stage: body.stage,
         state: 'ON',
         createdAt: onJobs[0]?.createdAt
       }

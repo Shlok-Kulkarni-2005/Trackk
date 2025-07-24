@@ -18,8 +18,8 @@ export default function ProductListPage(): React.ReactElement {
 
   // Initial fetch on mount (if not cleared)
   useEffect(() => {
-    async function fetchJobs() {
-      const res = await fetch('/api/jobs');
+    async function fetchProducts() {
+      const res = await fetch('/api/products');
       if (res.ok) {
         const data = await res.json();
         // Get hidden IDs from localStorage
@@ -30,34 +30,22 @@ export default function ProductListPage(): React.ReactElement {
             hiddenIds = JSON.parse(hiddenIdsRaw);
           } catch {}
         }
-        // Group jobs by productId and keep only the latest job for each product
-        const latestJobByProduct: { [productId: string]: any } = {};
-        data.jobs.forEach((job: any) => {
-          const productId = job.product.id;
-          if (
-            !latestJobByProduct[productId] ||
-            new Date(job.createdAt) > new Date(latestJobByProduct[productId].createdAt)
-          ) {
-            latestJobByProduct[productId] = job;
-          }
-        });
-        // Map to Product[] and sort by date descending, filter out hidden
-        const productsArr = Object.values(latestJobByProduct)
-          .map((job: any) => ({
-            id: job.product.id,
-            name: job.product.name,
-            process: job.machine.name,
-            status: job.state,
-            date: new Date(job.createdAt).toLocaleDateString(),
+        // Map to Product[] and sort by name, filter out hidden
+        const productsArr = data.products
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            process: p.process,
+            status: p.status,
+            date: p.date ? new Date(p.date).toLocaleDateString() : '',
           }))
-          .filter((product: any) => !hiddenIds.includes(product.id))
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          .filter((product: any) => !hiddenIds.includes(product.id));
         setProducts(productsArr);
       }
     }
-    fetchJobs();
-    // Poll every 5 seconds for new jobs
-    const interval = setInterval(fetchJobs, 5000);
+    fetchProducts();
+    // Poll every 5 seconds for new products
+    const interval = setInterval(fetchProducts, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -76,25 +64,8 @@ export default function ProductListPage(): React.ReactElement {
 
   const confirmClearProducts = async (): Promise<void> => {
     try {
-      // Fetch all jobs from backend
-      let allIds: number[] = [];
-      try {
-        const res = await fetch('/api/jobs');
-        if (res.ok) {
-          const data = await res.json();
-          const idsSet = new Set<number>();
-          data.jobs.forEach((job: any) => {
-            idsSet.add(job.product.id);
-          });
-          allIds = Array.from(idsSet);
-        } else {
-          throw new Error('API returned error');
-        }
-      } catch (fetchError) {
-        // Fallback: hide only currently visible products
-        allIds = products.map((product) => product.id);
-        alert('Failed to fetch all jobs from backend. Only currently visible products will be hidden.');
-      }
+      // Hide all currently visible products
+      const allIds = products.map((product) => product.id);
       // Merge with any already hidden
       const hiddenIdsRaw = localStorage.getItem('productlist_hidden_ids');
       let hiddenIds: number[] = [];
@@ -107,7 +78,7 @@ export default function ProductListPage(): React.ReactElement {
       localStorage.setItem('productlist_hidden_ids', JSON.stringify(merged));
       setProducts([]);
       setIsConfirmingClear(false);
-      console.log('Product list cleared (hidden locally, all IDs or fallback)');
+      console.log('Product list cleared (hidden locally, all IDs)');
     } catch (error) {
       console.error('Error clearing product list:', error);
       alert('Failed to clear product list.');

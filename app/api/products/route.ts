@@ -13,6 +13,9 @@ export async function GET() {
         jobs: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+          include: {
+            machine: true,
+          },
         },
       },
     });
@@ -20,8 +23,9 @@ export async function GET() {
     const result = products.map((p) => ({
       id: p.id,
       name: p.name,
-      process: p.jobs[0]?.stage || '',
+      process: p.jobs[0]?.machine?.name || '',
       status: p.jobs[0]?.state || '',
+      date: p.jobs[0]?.createdAt ? new Date(p.jobs[0].createdAt).toISOString() : '',
     }));
     return NextResponse.json({ products: result }, { status: 200 });
   } catch {

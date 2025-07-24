@@ -391,9 +391,9 @@ export default function Sidebar({
   // Session data state with fallback
   const [currentSessionData, setCurrentSessionData] = useState(
     sessionData || {
-      lastLogin: new Date().toISOString(),
-      currentSessionStart: new Date().toISOString(),
-      sessionDuration: "0 min",
+      lastLogin: '',
+      currentSessionStart: '',
+      sessionDuration: '0 min',
     }
   );
 
@@ -401,6 +401,12 @@ export default function Sidebar({
   useEffect(() => {
     if (sessionData) {
       setCurrentSessionData(sessionData);
+    } else if (typeof window !== 'undefined') {
+      setCurrentSessionData({
+        lastLogin: new Date().toISOString(),
+        currentSessionStart: new Date().toISOString(),
+        sessionDuration: '0 min',
+      });
     }
   }, [sessionData]);
 

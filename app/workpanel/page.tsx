@@ -65,43 +65,27 @@ export default function WorkPanelInterface() {
       if (res.ok) {
         const data = await res.json();
         setAllJobs(data.jobs);
-        // Group jobs by productId and machineId and aggregate ON/OFF counts
-        const jobsByProductMachine: { [key: string]: any[] } = {};
+        // Group jobs by productId, machineName, and state for accurate quantity
+        const jobsByKey: { [key: string]: any[] } = {};
         data.jobs.forEach((job: any) => {
-          const productId = job.product.id.toString();
-          const machineId = job.machine.id.toString();
-          const key = `${productId}__${machineId}`;
-          if (!jobsByProductMachine[key]) jobsByProductMachine[key] = [];
-          jobsByProductMachine[key].push(job);
+          const key = `${job.product.id}__${job.machine.name}__${job.state}`;
+          if (!jobsByKey[key]) jobsByKey[key] = [];
+          jobsByKey[key].push(job);
         });
         // Build productData with ON and OFF quantities for each (product, machine) pair
         const products: Product[] = [];
-        Object.entries(jobsByProductMachine).forEach(([key, jobs]) => {
-          const onJobs = jobs.filter((j: any) => j.state === 'ON');
-          const offJobs = jobs.filter((j: any) => j.state === 'OFF');
-          const productId = jobs[0].product.id.toString();
+        Object.entries(jobsByKey).forEach(([key, jobs]) => {
+          const [productId, machineName, state] = key.split('__');
           const productName = jobs[0].product.name;
-          const machineName = jobs[0].machine.name;
-          if (onJobs.length > 0) {
-            products.push({
-              id: `${productId}__${machineName}__ON`,
-              name: productName,
-              operation: machineName,
-              date: new Date(onJobs[0].createdAt).toLocaleDateString(),
-              state: 'ON',
-              quantity: onJobs.length,
-            });
-          }
-          if (offJobs.length > 0) {
-            products.push({
-              id: `${productId}__${machineName}__OFF`,
-              name: productName,
-              operation: machineName,
-              date: new Date(offJobs[0].createdAt).toLocaleDateString(),
-              state: 'OFF',
-              quantity: offJobs.length,
-            });
-          }
+          const date = new Date(jobs[0].createdAt).toLocaleDateString();
+          products.push({
+            id: `${productId}__${machineName}__${state}`,
+            name: productName,
+            operation: machineName,
+            date,
+            state: state as 'ON' | 'OFF',
+            quantity: jobs.length,
+          });
         });
         setProductData(products);
       }
@@ -206,41 +190,25 @@ export default function WorkPanelInterface() {
             const refreshRes = await fetch('/api/jobs');
             if (refreshRes.ok) {
               const refreshData = await refreshRes.json();
-              const jobsByProductMachine: { [key: string]: any[] } = {};
+              const jobsByKey: { [key: string]: any[] } = {};
               refreshData.jobs.forEach((job: any) => {
-                const productId = job.product.id.toString();
-                const machineId = job.machine.id.toString();
-                const key = `${productId}__${machineId}`;
-                if (!jobsByProductMachine[key]) jobsByProductMachine[key] = [];
-                jobsByProductMachine[key].push(job);
+                const key = `${job.product.id}__${job.machine.name}__${job.state}`;
+                if (!jobsByKey[key]) jobsByKey[key] = [];
+                jobsByKey[key].push(job);
               });
               const products: Product[] = [];
-              Object.entries(jobsByProductMachine).forEach(([key, jobs]) => {
-                const onJobs = jobs.filter((j: any) => j.state === 'ON');
-                const offJobs = jobs.filter((j: any) => j.state === 'OFF');
-                const productId = jobs[0].product.id.toString();
+              Object.entries(jobsByKey).forEach(([key, jobs]) => {
+                const [productId, machineName, state] = key.split('__');
                 const productName = jobs[0].product.name;
-                const machineName = jobs[0].machine.name;
-                if (onJobs.length > 0) {
-                  products.push({
-                    id: `${productId}__${machineName}__ON`,
-                    name: productName,
-                    operation: machineName,
-                    date: new Date(onJobs[0].createdAt).toLocaleDateString(),
-                    state: 'ON',
-                    quantity: onJobs.length,
-                  });
-                }
-                if (offJobs.length > 0) {
-                  products.push({
-                    id: `${productId}__${machineName}__OFF`,
-                    name: productName,
-                    operation: machineName,
-                    date: new Date(offJobs[0].createdAt).toLocaleDateString(),
-                    state: 'OFF',
-                    quantity: offJobs.length,
-                  });
-                }
+                const date = new Date(jobs[0].createdAt).toLocaleDateString();
+                products.push({
+                  id: `${productId}__${machineName}__${state}`,
+                  name: productName,
+                  operation: machineName,
+                  date,
+                  state: state as 'ON' | 'OFF',
+                  quantity: jobs.length,
+                });
               });
               setProductData(products);
             }
@@ -511,14 +479,6 @@ export default function WorkPanelInterface() {
             <h1 className="text-2xl font-bold text-gray-900">{selectedProduct?.name}</h1>
           </div>
           <div className="flex items-center space-x-2">
-            {selectedProduct && selectedProduct.state === 'ON' && (
-              <button
-                onClick={() => handleMoveToPast(selectedProduct)}
-                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-              >
-                Move to Past
-              </button>
-            )}
             <button
               onClick={handleClose}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"

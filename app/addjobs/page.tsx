@@ -75,6 +75,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
 export default function AddJobsForm() {
   const [selectedMachine, setSelectedMachine] = useState<string>('Cutting');
+  const [machineNumber, setMachineNumber] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string>('ON');
   const [selectedStage, setSelectedStage] = useState<string>('Milling');
@@ -84,6 +85,7 @@ export default function AddJobsForm() {
   const [validationMessage, setValidationMessage] = useState<string>('');
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [machineNumberError, setMachineNumberError] = useState<string>('');
 
   // Auto-hide messages after 5 seconds
   useEffect(() => {
@@ -116,7 +118,23 @@ export default function AddJobsForm() {
     'OFF',
   ];
 
-
+  // Add a list of all possible operations/stages
+  const stages: string[] = [
+    'Cutting',
+    'CNC Turning Soft-1',
+    'CNC Turning Soft-2',
+    'Gun Drilling',
+    'Heat Treatment',
+    'CNC Turning Hard-1',
+    'CNC Turning hard-2',
+    'Grinding',
+    'Flat Milling VMC',
+    'Dummy Bottom CNC',
+    'Profile CNC',
+    'PDI',
+    'RFD',
+    'Milling'
+  ];
 
 
   const handleMenuClick = (): void => {
@@ -163,27 +181,28 @@ export default function AddJobsForm() {
   };
 
   const handleAddJob = async (): Promise<void> => {
+    // Validate machine number
+    if (!machineNumber.trim()) {
+      setMachineNumberError('Machine number is required');
+      return;
+    }
     // Validate product status before adding job
-    const isValid = await validateProductStatus(selectedProduct, selectedMachine, selectedState);
-    
+    const isValid = await validateProductStatus(selectedProduct, `${selectedMachine} #${machineNumber.trim()}`, selectedState);
     if (!isValid) {
       return; // Don't proceed if validation fails
     }
-
     // Validate quantity
     if (quantity <= 0 || quantity > 1000) {
       setMessage({ text: 'Please enter a valid quantity (1-1000)', type: 'error' });
       return;
     }
-
     const jobData: JobData = {
-      machine: selectedMachine,
+      machine: `${selectedMachine} #${machineNumber.trim()}`,
       product: selectedProduct,
       state: selectedState,
       stage: selectedStage,
       quantity: quantity
     };
-    
     try {
       const res = await fetch('/api/jobs', {
         method: 'POST',
@@ -197,6 +216,7 @@ export default function AddJobsForm() {
         setSelectedStage('Milling');
         setSelectedState('ON');
         setSelectedMachine('Cutting');
+        setMachineNumber('');
         setQuantity(1);
         setQuantityInput('1');
         setValidationMessage('');
@@ -261,10 +281,35 @@ export default function AddJobsForm() {
               setValidationMessage('');
               // Validate if state is OFF
               if (selectedState === 'OFF' && selectedProduct && value) {
-                validateProductStatus(selectedProduct, value, selectedState);
+                validateProductStatus(selectedProduct, `${value} #${machineNumber.trim()}`, selectedState);
               }
             }}
           />
+
+          {/* Machine Number */}
+          <div className="mb-4 md:mb-6">
+            <label className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
+              Machine Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className={`w-full bg-white border ${machineNumberError ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}
+              value={machineNumber}
+              onChange={e => {
+                setMachineNumber(e.target.value);
+                setMachineNumberError('');
+                // Re-validate if state is OFF
+                if (selectedState === 'OFF' && selectedProduct && selectedMachine && e.target.value) {
+                  validateProductStatus(selectedProduct, `${selectedMachine} #${e.target.value.trim()}`, selectedState);
+                }
+              }}
+              placeholder="Enter machine number (e.g., 1, 2, 3)"
+              required
+            />
+            {machineNumberError && (
+              <p className="text-sm text-red-500 mt-1">{machineNumberError}</p>
+            )}
+          </div>
 
           {/* Product */}
           <div className="mb-4 md:mb-6">
@@ -279,8 +324,8 @@ export default function AddJobsForm() {
                 setSelectedProduct(e.target.value);
                 setValidationMessage('');
                 // Validate if state is OFF
-                if (selectedState === 'OFF' && e.target.value && selectedMachine) {
-                  validateProductStatus(e.target.value, selectedMachine, selectedState);
+                if (selectedState === 'OFF' && e.target.value && selectedMachine && machineNumber) {
+                  validateProductStatus(e.target.value, `${selectedMachine} #${machineNumber.trim()}`, selectedState);
                 }
               }}
               placeholder="A-1825"
@@ -316,8 +361,8 @@ export default function AddJobsForm() {
                 setQuantityInput(constrainedValue.toString());
                 
                 // Re-validate if state is OFF
-                if (selectedState === 'OFF' && selectedProduct && selectedMachine) {
-                  validateProductStatus(selectedProduct, selectedMachine, selectedState);
+                if (selectedState === 'OFF' && selectedProduct && selectedMachine && machineNumber) {
+                  validateProductStatus(selectedProduct, `${selectedMachine} #${machineNumber.trim()}`, selectedState);
                 }
               }}
               placeholder="1"
@@ -338,8 +383,8 @@ export default function AddJobsForm() {
               // Clear validation message when state changes
               setValidationMessage('');
               // Validate immediately if state is OFF
-              if (value === 'OFF' && selectedProduct && selectedMachine) {
-                validateProductStatus(selectedProduct, selectedMachine, value);
+              if (value === 'OFF' && selectedProduct && selectedMachine && machineNumber) {
+                validateProductStatus(selectedProduct, `${selectedMachine} #${machineNumber.trim()}`, value);
               }
             }}
           />

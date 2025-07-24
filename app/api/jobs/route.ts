@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
         });
         jobs.push(job);
         broadcastJob(job);
+        // Debug log for ON job creation
+        console.log(`[JOBS DEBUG] Created ON job: Product=${job.product.name}, Machine=${job.machine.name}, CreatedAt=${job.createdAt}`);
       }
     }
     

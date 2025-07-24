@@ -35,7 +35,30 @@ export default function ReportsPage() {
   const [recentDownloads, setRecentDownloads] = useState<RecentDownload[]>([]);
   const [loadingDownloads, setLoadingDownloads] = useState<boolean>(false);
 
-  const reportTypes: ReportType[] = ['Date Wise', 'Weekly', 'Monthly'];
+  // Add 'Process Wise' to the reportTypes array
+  const reportTypes: ReportType[] = ['Date Wise', 'Weekly', 'Monthly', 'Process Wise'];
+
+  // Add state for process-wise selection
+  const [selectedProcess, setSelectedProcess] = useState<string>('');
+  const [processList, setProcessList] = useState<string[]>([]);
+  const [processStartDate, setProcessStartDate] = useState<string>('');
+  const [processEndDate, setProcessEndDate] = useState<string>('');
+
+  // Fetch available operation types for dropdown (on mount)
+  useEffect(() => {
+    async function fetchMachines() {
+      try {
+        const res = await fetch('/api/machines');
+        if (res.ok) {
+          const data = await res.json();
+          // Use all machine names directly, but only the base name before any #, and unique
+          const opTypes = Array.from(new Set((data.machines || []).map((machine: any) => machine.name.split('#')[0].trim())));
+          setProcessList(opTypes);
+        }
+      } catch {}
+    }
+    fetchMachines();
+  }, []);
 
   // Fetch recent downloads
   const fetchRecentDownloads = async (): Promise<void> => {
@@ -86,6 +109,12 @@ export default function ReportsPage() {
             return;
           }
           break;
+        case 'Process Wise':
+          if (!selectedProcess || !processStartDate || !processEndDate) {
+            alert('Please select process and date range for Process Wise report');
+            return;
+          }
+          break;
       }
 
       // Map frontend report types to API report types
@@ -99,6 +128,9 @@ export default function ReportsPage() {
           break;
         case 'Monthly':
           reportType = 'monthly';
+          break;
+        case 'Process Wise':
+          reportType = 'processWise';
           break;
         default:
           reportType = 'daily';
@@ -129,6 +161,9 @@ export default function ReportsPage() {
           const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
           downloadUrl += `&startDate=${monthStart.toISOString().split('T')[0]}&endDate=${monthEnd.toISOString().split('T')[0]}`;
           break;
+        case 'Process Wise':
+          downloadUrl += `&process=${encodeURIComponent(selectedProcess)}&startDate=${processStartDate}&endDate=${processEndDate}`;
+          break;
       }
 
       // Improved download logic: fetch first, check status, then download
@@ -143,10 +178,17 @@ export default function ReportsPage() {
         return;
       }
       const blob = await response.blob();
+      // Get filename from Content-Disposition header if present
+      let filename = `${selectedReportType} Report.xlsx`;
+      const disposition = response.headers.get('Content-Disposition');
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${selectedReportType} Report.xlsx`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -161,6 +203,33 @@ export default function ReportsPage() {
       alert('Failed to download report. Please try again.');
     }
   };
+
+  // Add handler for viewing process wise report
+  // const handleViewProcessWiseReport = async () => {
+  //   setProcessWiseLoading(true);
+  //   setProcessWiseError(null);
+  //   setProcessWiseData([]);
+  //   try {
+  //     if (!selectedProcess || !processStartDate || !processEndDate) {
+  //       setProcessWiseError('Please select process and date range for Process Wise report');
+  //       setProcessWiseLoading(false);
+  //       return;
+  //     }
+  //     const url = `/api/reports/operation-wise-grouped?process=${encodeURIComponent(selectedProcess)}&startDate=${processStartDate}&endDate=${processEndDate}`;
+  //     const res = await fetch(url);
+  //     const json = await res.json();
+  //     if (!json.success) {
+  //       setProcessWiseError(json.error || 'Failed to fetch report');
+  //       setProcessWiseLoading(false);
+  //       return;
+  //     }
+  //     setProcessWiseData(json.data);
+  //   } catch (err) {
+  //     setProcessWiseError('Failed to fetch report');
+  //   } finally {
+  //     setProcessWiseLoading(false);
+  //   }
+  // };
 
   const CustomDropdown: React.FC<CustomDropdownProps> = ({ 
     value, 
@@ -265,6 +334,66 @@ export default function ReportsPage() {
             />
           </div>
         );
+      case 'Process Wise':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="process-select" className="block text-sm font-medium text-gray-700 mb-2">
+                Select Operation/Machine
+              </label>
+              <select
+                id="process-select"
+                value={selectedProcess}
+                onChange={e => setSelectedProcess(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select Operation/Machine --</option>
+                {processList.map((proc) => (
+                  <option key={proc} value={proc}>{proc}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="process-start-date" className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                id="process-start-date"
+                value={processStartDate}
+                onChange={e => setProcessStartDate(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="process-end-date" className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                id="process-end-date"
+                value={processEndDate}
+                onChange={e => setProcessEndDate(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              type="button"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 mt-4"
+              onClick={() => {
+                if (!selectedProcess || !processStartDate || !processEndDate) {
+                  alert('Please select process and date range for Process Wise report');
+                  return;
+                }
+                const url = `/api/reports/process-wise-export?process=${encodeURIComponent(selectedProcess)}&startDate=${processStartDate}&endDate=${processEndDate}`;
+                window.location.href = url;
+              }}
+              disabled={!selectedProcess || !processStartDate || !processEndDate}
+            >
+              Download Process Wise Excel
+            </button>
+          </div>
+        );
     }
   };
 
@@ -320,12 +449,14 @@ export default function ReportsPage() {
 
                 {renderReportSection()}
 
-                <button
-                  onClick={handleDownload}
-                  className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium text-sm hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 mt-4"
-                >
-                  Download Report
-                </button>
+                {selectedReportType !== 'Process Wise' && (
+                  <button
+                    onClick={handleDownload}
+                    className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium text-sm hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 mt-4"
+                  >
+                    Download Report
+                  </button>
+                )}
               </div>
             </div>
           </div>
