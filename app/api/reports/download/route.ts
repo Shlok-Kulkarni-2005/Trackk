@@ -85,12 +85,12 @@ export async function GET(req: NextRequest) {
       // Ensure columns match screenshot order and names
       worksheet.columns = [
         { header: 'Product ID', key: 'productId', width: 20 },
-        { header: 'Quantity', key: 'quantity', width: 12 },
-        { header: 'Machine Number', key: 'machineNumber', width: 18 },
+        { header: 'Machine Number', key: 'machineNumber', width: 15 },
         { header: 'Date', key: 'date', width: 15 },
-        { header: 'ON Time', key: 'onTime', width: 10 },
-        { header: 'OFF Time', key: 'offTime', width: 10 },
-        { header: 'Total Time (min)', key: 'totalTime', width: 20 },
+        { header: 'ON Time', key: 'onTime', width: 15 },
+        { header: 'OFF Time', key: 'offTime', width: 15 },
+        { header: 'Total Time (min)', key: 'totalTime', width: 18 },
+        { header: 'Quantity', key: 'quantity', width: 12 }
       ];
       // --- DEBUG LOGGING ---
       // Log all ON and OFF jobs for the selected process/date
@@ -107,8 +107,8 @@ export async function GET(req: NextRequest) {
       });
       const allOn = jobs.filter(j => j.state === 'ON');
       const allOff = jobs.filter(j => j.state === 'OFF');
-      console.log('DEBUG: ALL ON JOBS:', allOn.map(j => ({ id: j.id, productId: j.productId, machineId: j.machineId, createdAt: j.createdAt, quantity: j.quantity })));
-      console.log('DEBUG: ALL OFF JOBS:', allOff.map(j => ({ id: j.id, productId: j.productId, machineId: j.machineId, createdAt: j.createdAt, updatedAt: j.updatedAt, quantity: j.quantity })));
+      console.log('DEBUG: ALL ON JOBS:', allOn.map(j => ({ id: j.id, productId: j.productId, machineId: j.machineId, createdAt: j.createdAt })));
+      console.log('DEBUG: ALL OFF JOBS:', allOff.map(j => ({ id: j.id, productId: j.productId, machineId: j.machineId, createdAt: j.createdAt, updatedAt: j.updatedAt })));
       // --- END DEBUG LOGGING ---
       // ---
       // All time formatting for ON/OFF is handled below. Always output as HH:mm (no seconds, no ms)
@@ -130,81 +130,66 @@ export async function GET(req: NextRequest) {
       Object.values(jobGroups).forEach((group) => {
         group.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         // Separate ON and OFF jobs
-        let onJobs = group.filter(j => j.state === 'ON').map(j => ({...j, remaining: j.quantity}));
-        let offJobs = group.filter(j => j.state === 'OFF').map(j => ({...j, remaining: j.quantity}));
+        let onJobs = group.filter(j => j.state === 'ON');
+        let offJobs = group.filter(j => j.state === 'OFF');
         let onIdx = 0, offIdx = 0;
         while (onIdx < onJobs.length && offIdx < offJobs.length) {
           let onJob = onJobs[onIdx];
           let offJob = offJobs[offIdx];
-          let pairQty = Math.min(onJob.remaining, offJob.remaining);
-          if (pairQty > 0) {
-            // Log each ON/OFF pair
-            console.log('DEBUG: PAIRING ON/OFF', {
-              onId: onJob.id, offId: offJob.id, pairQty,
-              onCreatedAt: onJob.createdAt, offCreatedAt: offJob.createdAt, offUpdatedAt: offJob.updatedAt
-            });
-            // Use real ON and OFF times
-            const onTime = new Date(onJob.createdAt);
-            onTime.setSeconds(0, 0);
-            const offTime = new Date(offJob.updatedAt || offJob.createdAt);
-            offTime.setSeconds(0, 0);
-            const dateStr = onTime.toISOString().split('T')[0];
-            // Always use getMachineNumber
-            const machineNumber = getMachineNumber(onJob.machine.name);
-            const onTimeStr = `${onTime.getHours().toString().padStart(2, '0')}:${onTime.getMinutes().toString().padStart(2, '0')}`;
-            const offTimeStr = `${offTime.getHours().toString().padStart(2, '0')}:${offTime.getMinutes().toString().padStart(2, '0')}`;
-            const totalTime = Math.round((offTime.getTime() - onTime.getTime()) / 60000);
-            allRows.push({
-              productId: onJob.product.name || onJob.productId,
-              quantity: pairQty,
-              machineNumber,
-              date: dateStr,
-              onTime: onTimeStr,
-              offTime: offTimeStr,
-              totalTime: totalTime ? totalTime : '',
-            });
-            onJob.remaining -= pairQty;
-            offJob.remaining -= pairQty;
-          }
-          // Always increment at least one index to avoid infinite loop
-          if (onJob.remaining === 0 && offJob.remaining === 0) {
-            onIdx++;
-            offIdx++;
-          } else if (onJob.remaining === 0) {
-            onIdx++;
-          } else if (offJob.remaining === 0) {
-            offIdx++;
-          } else {
-            break;
-          }
+          
+          // Log each ON/OFF pair
+          console.log('DEBUG: PAIRING ON/OFF', {
+            onId: onJob.id, offId: offJob.id,
+            onCreatedAt: onJob.createdAt, offCreatedAt: offJob.createdAt, offUpdatedAt: offJob.updatedAt
+          });
+          // Use real ON and OFF times
+          const onTime = new Date(onJob.createdAt);
+          onTime.setSeconds(0, 0);
+          const offTime = new Date(offJob.updatedAt || offJob.createdAt);
+          offTime.setSeconds(0, 0);
+          const dateStr = onTime.toISOString().split('T')[0];
+          // Always use getMachineNumber
+          const machineNumber = getMachineNumber(onJob.machine.name);
+          const onTimeStr = `${onTime.getHours().toString().padStart(2, '0')}:${onTime.getMinutes().toString().padStart(2, '0')}`;
+          const offTimeStr = `${offTime.getHours().toString().padStart(2, '0')}:${offTime.getMinutes().toString().padStart(2, '0')}`;
+          const totalTime = Math.round((offTime.getTime() - onTime.getTime()) / 60000);
+          allRows.push({
+            productId: onJob.product.name,
+            machineNumber: getMachineNumber(onJob.machine.name),
+            date: dateStr,
+            onTime: onTimeStr,
+            offTime: offTimeStr,
+            totalTime: totalTime ? totalTime : '',
+            quantity: onJob.quantity || 1
+          });
+          onIdx++;
+          offIdx++;
         }
         // Any remaining ON jobs (not yet OFF)
         for (; onIdx < onJobs.length; onIdx++) {
           let onJob = onJobs[onIdx];
-          if (onJob.remaining > 0) {
-            // Log unmatched ON job
-            console.log('DEBUG: UNMATCHED ON JOB', {
-              onId: onJob.id, remaining: onJob.remaining, onCreatedAt: onJob.createdAt
-            });
-            const onTime = new Date(onJob.createdAt);
-            onTime.setSeconds(0, 0);
-            const dateStr = onTime.toISOString().split('T')[0];
-            const machineNumber = getMachineNumber(onJob.machine.name);
-            const onTimeStr = `${onTime.getHours().toString().padStart(2, '0')}:${onTime.getMinutes().toString().padStart(2, '0')}`;
-            // Fallback: unmatched ON job, blank OFF/total time
-            allRows.push({
-              productId: onJob.product.name || onJob.productId,
-              quantity: onJob.remaining,
-              machineNumber,
-              date: dateStr,
-              onTime: onTimeStr,
-              offTime: '',
-              totalTime: '',
-            });
-          }
+          // Log unmatched ON job
+          console.log('DEBUG: UNMATCHED ON JOB', {
+            onId: onJob.id, onCreatedAt: onJob.createdAt
+          });
+          const onTime = new Date(onJob.createdAt);
+          onTime.setSeconds(0, 0);
+          const dateStr = onTime.toISOString().split('T')[0];
+          const machineNumber = getMachineNumber(onJob.machine.name);
+          const onTimeStr = `${onTime.getHours().toString().padStart(2, '0')}:${onTime.getMinutes().toString().padStart(2, '0')}`;
+          // Fallback: unmatched ON job, blank OFF/total time
+          allRows.push({
+            productId: onJob.product.name || onJob.productId,
+            machineNumber,
+            date: dateStr,
+            onTime: onTimeStr,
+            offTime: '',
+            totalTime: '',
+            quantity: onJob.quantity || 1
+          });
         }
       });
-      // Group rows by all parameters except quantity
+      // Group rows by all parameters
       const groupedRowsObj = {};
       for (const row of allRows) {
         const groupKey = [
@@ -217,8 +202,6 @@ export async function GET(req: NextRequest) {
         ].join('|');
         if (!groupedRowsObj[groupKey]) {
           groupedRowsObj[groupKey] = { ...row };
-        } else {
-          groupedRowsObj[groupKey].quantity += row.quantity;
         }
       }
       // Add grouped rows to worksheet
@@ -235,12 +218,12 @@ export async function GET(req: NextRequest) {
           const offTimeStr = job.updatedAt ? `${new Date(job.updatedAt).getHours().toString().padStart(2, '0')}:${new Date(job.updatedAt).getMinutes().toString().padStart(2, '0')}` : '';
           worksheet.addRow({
             productId: (job.product && job.product.name) || job.productId || 'Unknown',
-            quantity: job.quantity || 1,
             machineNumber: getMachineNumber(job.machine && job.machine.name),
             date: job.createdAt ? new Date(job.createdAt).toISOString().split('T')[0] : '',
             onTime: onTimeStr,
             offTime: offTimeStr,
             totalTime: '',
+            quantity: job.quantity || 1
           });
         });
         addedRows = jobs.length;
@@ -250,8 +233,8 @@ export async function GET(req: NextRequest) {
       }
       worksheet.addRow([]);
       // Use Object.values for total product calculation
-      const totalQuantity = Object.values(groupedRowsObj).reduce((sum, row) => sum + row.quantity, 0);
-      const summaryRow = worksheet.addRow(['Total Products:', totalQuantity, '', '', '', '', '']);
+      const totalProducts = Object.keys(groupedRowsObj).length;
+      const summaryRow = worksheet.addRow(['Total Products:', totalProducts, '', '', '', '', '']);
       summaryRow.getCell('A').font = { bold: true };
       summaryRow.getCell('B').font = { bold: true };
       const startDateStr = startDateParam || startDate.toISOString().split('T')[0];
@@ -262,6 +245,211 @@ export async function GET(req: NextRequest) {
       const headers = new Headers({
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${reportName.replace(/ /g, '_')}.xlsx"`,
+      });
+      return new NextResponse(buffer, { status: 200, headers });
+    }
+
+    if (reportType === 'dateWiseAllMachines') {
+      // Date-wise report for all machines
+      const selectedDate = searchParams.get('date');
+      if (!selectedDate) {
+        return NextResponse.json({ success: false, error: 'Date is required for Date-wise All Machines report.' }, { status: 400 });
+      }
+
+      // Parse the selected date and create date range for that day
+      const reportDate = new Date(selectedDate);
+      reportDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(reportDate);
+      nextDay.setDate(reportDate.getDate() + 1);
+      nextDay.setHours(0, 0, 0, 0);
+
+      worksheet = workbook.addWorksheet('Date-wise All Machines Report');
+      
+      // Set up columns for the report
+      worksheet.columns = [
+        { header: 'Product ID', key: 'productId', width: 20 },
+        { header: 'Machine Number', key: 'machineNumber', width: 15 },
+        { header: 'Process', key: 'process', width: 20 },
+        { header: 'Quantity', key: 'quantity', width: 12 },
+        { header: 'ON Time', key: 'onTime', width: 15 },
+        { header: 'OFF Time', key: 'offTime', width: 15 },
+        { header: 'Total Time (min)', key: 'totalTime', width: 18 }
+      ];
+
+      // Style the header row
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } }; // Light gray background
+      headerRow.eachCell((cell) => {
+        cell.border = { 
+          top: { style: 'thin' }, 
+          bottom: { style: 'thin' }, 
+          left: { style: 'thin' }, 
+          right: { style: 'thin' } 
+        };
+      });
+
+      // Get all jobs for the selected date across all machines
+      const allJobs = await prisma.job.findMany({
+        where: {
+          createdAt: { gte: reportDate, lt: nextDay },
+        },
+        include: {
+          machine: true,
+          product: true,
+        },
+        orderBy: [
+          { machine: { name: 'asc' } },
+          { createdAt: 'asc' }
+        ],
+      });
+
+      if (!allJobs || allJobs.length === 0) {
+        worksheet.addRow(['No jobs found for the selected date.']);
+        const reportName = `Date-wise_All_Machines_${selectedDate}_report`;
+        await prisma.reportDownload.create({ data: { reportName } });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const headers = new Headers({
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${reportName}.xlsx"`,
+        });
+        return new NextResponse(buffer, { status: 200, headers });
+      }
+
+      // Group jobs by machine and product for better organization
+      const machineGroups = {};
+      allJobs.forEach(job => {
+        if (!job.machine || !job.product) return;
+        
+        const machineName = job.machine.name;
+        const processName = machineName.split('#')[0].trim(); // Extract process name (e.g., "Cutting", "Gun Drilling")
+        const machineNumber = getMachineNumber(machineName);
+        
+        if (!machineGroups[machineName]) {
+          machineGroups[machineName] = {
+            processName,
+            machineNumber,
+            products: {}
+          };
+        }
+        
+        // Group by product name
+        const productName = job.product.name;
+        if (!machineGroups[machineName].products[productName]) {
+          machineGroups[machineName].products[productName] = {
+            jobs: [],
+            totalQuantity: 0,
+            onTimes: [],
+            offTimes: [],
+            onJobs: [],
+            offJobs: []
+          };
+        }
+        
+        machineGroups[machineName].products[productName].jobs.push(job);
+        machineGroups[machineName].products[productName].totalQuantity += (job.quantity || 1);
+        
+        if (job.state === 'ON') {
+          machineGroups[machineName].products[productName].onTimes.push(new Date(job.createdAt));
+          machineGroups[machineName].products[productName].onJobs.push(job);
+        } else if (job.state === 'OFF') {
+          machineGroups[machineName].products[productName].offTimes.push(new Date(job.updatedAt || job.createdAt));
+          machineGroups[machineName].products[productName].offJobs.push(job);
+        }
+      });
+
+      // Process each machine group
+      let totalRows = 0;
+      Object.entries(machineGroups).forEach(([machineName, machineData]: [string, any]) => {
+        // Add machine header row
+        worksheet.addRow([]);
+        worksheet.addRow([`Machine: ${machineName}`, '', '', '', '', '', '']);
+        const machineHeaderRow = worksheet.getRow(worksheet.rowCount);
+        machineHeaderRow.getCell(1).font = { bold: true, color: { argb: 'FF0000FF' } }; // Blue color
+        machineHeaderRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } }; // Light gray background
+        // Add border to the machine header
+        machineHeaderRow.getCell(1).border = { 
+          top: { style: 'thin' }, 
+          bottom: { style: 'thin' }, 
+          left: { style: 'thin' }, 
+          right: { style: 'thin' } 
+        };
+        
+        // Process products for this machine
+        const { products, processName, machineNumber } = machineData;
+        
+        Object.entries(products).forEach(([productName, productData]: [string, any]) => {
+          const { totalQuantity, onTimes, offTimes, onJobs, offJobs } = productData;
+          
+          let onTimeStr = '';
+          let offTimeStr = '';
+          let totalTime = '';
+          
+          // Try to pair ON/OFF jobs first
+          if (onJobs.length > 0 && offJobs.length > 0) {
+            // Sort jobs by time to find the best pairs
+            const sortedOnJobs = onJobs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const sortedOffJobs = offJobs.sort((a, b) => new Date(a.updatedAt || a.createdAt).getTime() - new Date(b.updatedAt || b.createdAt).getTime());
+            
+            // Find the earliest ON and latest OFF time
+            const earliestOnTime = new Date(sortedOnJobs[0].createdAt);
+            const latestOffTime = new Date(sortedOffJobs[sortedOffJobs.length - 1].updatedAt || sortedOffJobs[sortedOffJobs.length - 1].createdAt);
+            
+            onTimeStr = `${earliestOnTime.getHours().toString().padStart(2, '0')}:${earliestOnTime.getMinutes().toString().padStart(2, '0')}`;
+            offTimeStr = `${latestOffTime.getHours().toString().padStart(2, '0')}:${latestOffTime.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Calculate total time
+            if (latestOffTime > earliestOnTime) {
+              totalTime = Math.round((latestOffTime.getTime() - earliestOnTime.getTime()) / 60000);
+            }
+          } else if (onJobs.length > 0) {
+            // Only ON jobs exist
+            const earliestOnTime = new Date(Math.min(...onTimes.map(t => t.getTime())));
+            onTimeStr = `${earliestOnTime.getHours().toString().padStart(2, '0')}:${earliestOnTime.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Try to estimate OFF time from the latest ON job + some buffer
+            const latestOnJob = onJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+            const estimatedOffTime = new Date(latestOnJob.createdAt.getTime() + 30 * 60000); // Add 30 minutes buffer
+            offTimeStr = `${estimatedOffTime.getHours().toString().padStart(2, '0')}:${estimatedOffTime.getMinutes().toString().padStart(2, '0')}`;
+            
+          } else if (offJobs.length > 0) {
+            // Only OFF jobs exist - try to estimate ON time
+            const latestOffTime = new Date(Math.max(...offTimes.map(t => t.getTime())));
+            offTimeStr = `${latestOffTime.getHours().toString().padStart(2, '0')}:${latestOffTime.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Estimate ON time by subtracting some time from OFF time
+            const estimatedOnTime = new Date(latestOffTime.getTime() - 30 * 60000); // Subtract 30 minutes
+            onTimeStr = `${estimatedOnTime.getHours().toString().padStart(2, '0')}:${estimatedOnTime.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Calculate estimated total time
+            totalTime = 30; // Estimated 30 minutes
+          }
+          
+          worksheet.addRow([
+            productName,
+            machineNumber,
+            processName,
+            totalQuantity,
+            onTimeStr,
+            offTimeStr,
+            totalTime || ''
+          ]);
+          totalRows++;
+        });
+      });
+
+      // Add summary
+      worksheet.addRow([]);
+      const summaryRow = worksheet.addRow(['Total Jobs:', totalRows, '', '', '', '', '']);
+      summaryRow.getCell('A').font = { bold: true };
+      summaryRow.getCell('B').font = { bold: true };
+
+      const reportName = `Date-wise_All_Machines_${selectedDate}_report`;
+      await prisma.reportDownload.create({ data: { reportName } });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const headers = new Headers({
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="${reportName}.xlsx"`,
       });
       return new NextResponse(buffer, { status: 200, headers });
     }
@@ -309,8 +497,8 @@ export async function GET(req: NextRequest) {
 
     // Add summary row
     worksheet.addRow([]);
-    const totalQuantity = dispatchedProducts.reduce((sum, product) => sum + product.quantity, 0);
-    const summaryRow = worksheet.addRow(['Total Products Dispatched:', totalQuantity, '']);
+    const totalProducts = dispatchedProducts.length;
+    const summaryRow = worksheet.addRow(['Total Products Dispatched:', totalProducts, '']);
     summaryRow.getCell('A').font = { bold: true };
     summaryRow.getCell('B').font = { bold: true };
 

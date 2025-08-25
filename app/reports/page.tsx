@@ -4,7 +4,7 @@ import { Menu, Download, ChevronDown } from 'lucide-react';
 import Sidebar from '../../components/sidebarm';
 
 // Type definitions
-type ReportType = 'Date Wise' | 'Weekly' | 'Monthly';
+type ReportType = 'Date Wise' | 'Weekly' | 'Monthly' | 'Process Wise' | 'Date-wise All Machines';
 
 interface RecentDownload {
   id: number;
@@ -36,13 +36,19 @@ export default function ReportsPage() {
   const [loadingDownloads, setLoadingDownloads] = useState<boolean>(false);
 
   // Add 'Process Wise' to the reportTypes array
-  const reportTypes: ReportType[] = ['Date Wise', 'Weekly', 'Monthly', 'Process Wise'];
+  const reportTypes: ReportType[] = ['Date Wise', 'Weekly', 'Monthly', 'Process Wise', 'Date-wise All Machines'];
 
   // Add state for process-wise selection
   const [selectedProcess, setSelectedProcess] = useState<string>('');
   const [processList, setProcessList] = useState<string[]>([]);
   const [processStartDate, setProcessStartDate] = useState<string>('');
   const [processEndDate, setProcessEndDate] = useState<string>('');
+
+  // Add state for date-wise all machines report
+  const [dateWiseAllMachinesDate, setDateWiseAllMachinesDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   // Fetch available operation types for dropdown (on mount)
   useEffect(() => {
@@ -115,6 +121,12 @@ export default function ReportsPage() {
             return;
           }
           break;
+        case 'Date-wise All Machines':
+          if (!dateWiseAllMachinesDate) {
+            alert('Please select a date for Date-wise All Machines report');
+            return;
+          }
+          break;
       }
 
       // Map frontend report types to API report types
@@ -131,6 +143,9 @@ export default function ReportsPage() {
           break;
         case 'Process Wise':
           reportType = 'processWise';
+          break;
+        case 'Date-wise All Machines':
+          reportType = 'dateWiseAllMachines';
           break;
         default:
           reportType = 'daily';
@@ -163,6 +178,9 @@ export default function ReportsPage() {
           break;
         case 'Process Wise':
           downloadUrl += `&process=${encodeURIComponent(selectedProcess)}&startDate=${processStartDate}&endDate=${processEndDate}`;
+          break;
+        case 'Date-wise All Machines':
+          downloadUrl += `&date=${dateWiseAllMachinesDate}`;
           break;
       }
 
@@ -394,6 +412,38 @@ export default function ReportsPage() {
             </button>
           </div>
         );
+      case 'Date-wise All Machines':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="date-all-machines" className="block text-sm font-medium text-gray-700 mb-2">
+                Select Date
+              </label>
+              <input
+                type="date"
+                id="date-all-machines"
+                value={dateWiseAllMachinesDate}
+                onChange={(e) => setDateWiseAllMachinesDate(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              type="button"
+              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium text-sm hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 mt-4"
+              onClick={() => {
+                if (!dateWiseAllMachinesDate) {
+                  alert('Please select a date for Date-wise All Machines report');
+                  return;
+                }
+                const url = `/api/reports/download?reportType=dateWiseAllMachines&date=${dateWiseAllMachinesDate}`;
+                window.location.href = url;
+              }}
+              disabled={!dateWiseAllMachinesDate}
+            >
+              Download Date-wise All Machines Report
+            </button>
+          </div>
+        );
     }
   };
 
@@ -449,7 +499,7 @@ export default function ReportsPage() {
 
                 {renderReportSection()}
 
-                {selectedReportType !== 'Process Wise' && (
+                {selectedReportType !== 'Process Wise' && selectedReportType !== 'Date-wise All Machines' && (
                   <button
                     onClick={handleDownload}
                     className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium text-sm hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 mt-4"
