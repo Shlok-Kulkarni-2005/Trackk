@@ -26,7 +26,7 @@ export default function TestDropdownPage() {
       setProducts(testProducts);
       setIsLoading(false);
     }, 1000);
-  }, []);
+  }, [testProducts]);
 
   const handleProductSelect = (productName: string) => {
     console.log('Test: Product selected:', productName);

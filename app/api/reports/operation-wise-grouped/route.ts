@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
     const allRows: any[] = [];
     Object.values(jobGroups).forEach((group: any) => {
       group.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      let onJobs: any[] = [];
-      let offJobs: any[] = [];
+      const onJobs: any[] = [];
+      const offJobs: any[] = [];
       for (const job of group) {
         if (job.state === 'ON') {
           onJobs.push(job);

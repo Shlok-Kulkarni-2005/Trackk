@@ -65,7 +65,7 @@ export default function ForgotPasswordFlow(): React.JSX.Element {
             Reset Link Sent
           </h2>
           <p className="text-gray-600 text-sm mb-6">
-            If your email is registered, we've sent a link to reset your password.
+            If your email is registered, we&apos;ve sent a link to reset your password.
             Please check your inbox.
           </p>
           <button

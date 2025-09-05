@@ -5,7 +5,7 @@ import Sidebar from '../../components/sidebar';
 import { useAlertNotifications } from '../lib/useAlertNotifications';
 
 // Type definitions
-interface Alert {
+interface AlertData {
   id: number;
   name: string;
   message: string;
@@ -14,11 +14,18 @@ interface Alert {
   date: Date;
 }
 
+interface Alert {
+  id: number;
+  message: string;
+  senderId?: number;
+  createdAt: Date;
+}
+
 export default function SeeAlertsPage() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<'today' | 'past'>('today');
-  const [todaysAlerts, setTodaysAlerts] = useState<Alert[]>([]);
-  const [pastAlerts, setPastAlerts] = useState<Alert[]>([]);
+  const [todaysAlerts, setTodaysAlerts] = useState<AlertData[]>([]);
+  const [pastAlerts, setPastAlerts] = useState<AlertData[]>([]);
   const { unreadCount, isAuthenticated } = useAlertNotifications();
 
   useEffect(() => {
@@ -34,7 +41,7 @@ export default function SeeAlertsPage() {
             date.getUTCDate() === now.getUTCDate()
           );
         }
-        const alerts = data.alerts.map((alert: any) => {
+        const alerts = data.alerts.map((alert: Alert) => {
           const date = new Date(alert.createdAt);
           return {
             id: alert.id,
@@ -45,8 +52,8 @@ export default function SeeAlertsPage() {
             date,
           };
         }); // Removed filter that excluded 'System' alerts
-        setTodaysAlerts(alerts.filter((alert: any) => isTodayUTC(alert.date)));
-        setPastAlerts(alerts.filter((alert: any) => !isTodayUTC(alert.date)));
+        setTodaysAlerts(alerts.filter((alert: AlertData) => isTodayUTC(alert.date)));
+        setPastAlerts(alerts.filter((alert: AlertData) => !isTodayUTC(alert.date)));
       }
     }
 
@@ -81,8 +88,8 @@ export default function SeeAlertsPage() {
     console.log('Load more alerts clicked');
   };
 
-  const renderAlertList = (alerts: Alert[]) => (
-    alerts.map((alert: Alert) => (
+  const renderAlertList = (alerts: AlertData[]) => (
+    alerts.map((alert: AlertData) => (
       <div 
         key={alert.id}
         className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"

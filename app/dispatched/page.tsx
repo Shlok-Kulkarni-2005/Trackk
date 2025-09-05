@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X, Package, Calendar, Search, RefreshCw } from 'lucide-react';
 import Sidebar from '../../components/sidebarm';
 
@@ -83,9 +83,9 @@ export default function DispatchedPage(): React.ReactElement {
     return () => clearInterval(interval);
   }, []);
 
-  const handleMenuClick = (): void => {
-    setSidebarOpen(true);
-  };
+  // const handleMenuClick = (): void => {
+  //   setSidebarOpen(true);
+  // };
 
   const handleRefresh = async (): Promise<void> => {
     setIsLoading(true);

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, ChangeEvent } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 export default function AvatarPage(): React.ReactElement {
@@ -41,9 +42,11 @@ export default function AvatarPage(): React.ReactElement {
             className="block w-full text-white"
           />
           {avatarUrl && (
-            <img
+            <Image
               src={avatarUrl}
               alt="Avatar Preview"
+              width={96}
+              height={96}
               className="mt-4 w-24 h-24 rounded-full object-cover border-2 border-blue-400"
             />
           )}

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { sendEmail } from '../../lib/email'; // adjust path if needed
 
 export async function GET() {

@@ -97,7 +97,7 @@ export function FallbackImage({
   }
 
   return (
-    <img
+    <Image
       src={imgSrc}
       alt={alt}
       width={width}
@@ -123,7 +123,7 @@ export function useAsyncEffect(
         }
       });
     };
-  }, deps);
+  }, [...deps, effect]);
 }
 
 // Hook for debounced values

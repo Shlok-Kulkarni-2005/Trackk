@@ -7,6 +7,13 @@ export interface User {
   createdAt: Date;
 }
 
+export interface Alert {
+  id: number;
+  message: string;
+  senderId?: number;
+  createdAt: Date;
+}
+
 export interface Operator {
   id: number;
   phone: string;

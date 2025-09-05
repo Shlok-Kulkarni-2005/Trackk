@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Image from "next/image";
 import { Menu, Edit, Bell, Filter, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/sidebar";
@@ -70,9 +71,11 @@ export default function HomeClient({
         </h1>
 
         {profileImage ? (
-          <img
+          <Image
             src={profileImage}
             alt="Profile"
+            width={40}
+            height={40}
             className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover"
           />
         ) : (

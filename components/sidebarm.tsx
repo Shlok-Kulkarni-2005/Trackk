@@ -504,7 +504,7 @@ export default function Sidebar({
         }
       );
     }
-  }, []);
+  }, [OPENCAGE_API_KEY]);
 
   const handleUserProfile = (): void => {
     console.log("User profile clicked");

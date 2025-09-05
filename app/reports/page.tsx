@@ -58,7 +58,7 @@ export default function ReportsPage() {
         if (res.ok) {
           const data = await res.json();
           // Use all machine names directly, but only the base name before any #, and unique
-          const opTypes = Array.from(new Set((data.machines || []).map((machine: any) => machine.name.split('#')[0].trim())));
+          const opTypes = Array.from(new Set((data.machines || []).map((machine: any) => machine.name.split('#')[0].trim()))) as string[];
           setProcessList(opTypes);
         }
       } catch {}

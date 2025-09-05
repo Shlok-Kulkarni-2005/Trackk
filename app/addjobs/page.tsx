@@ -119,22 +119,22 @@ export default function AddJobsForm() {
   ];
 
   // Add a list of all possible operations/stages
-  const stages: string[] = [
-    'Cutting',
-    'CNC Turning Soft-1',
-    'CNC Turning Soft-2',
-    'Gun Drilling',
-    'Heat Treatment',
-    'CNC Turning Hard-1',
-    'CNC Turning hard-2',
-    'Grinding',
-    'Flat Milling VMC',
-    'Dummy Bottom CNC',
-    'Profile CNC',
-    'PDI',
-    'RFD',
-    'Milling'
-  ];
+  // const stages: string[] = [
+  //   'Cutting',
+  //   'CNC Turning Soft-1',
+  //   'CNC Turning Soft-2',
+  //   'Gun Drilling',
+  //   'Heat Treatment',
+  //   'CNC Turning Hard-1',
+  //   'CNC Turning hard-2',
+  //   'Grinding',
+  //   'Flat Milling VMC',
+  //   'Dummy Bottom CNC',
+  //   'Profile CNC',
+  //   'PDI',
+  //   'RFD',
+  //   'Milling'
+  // ];
 
 
   const handleMenuClick = (): void => {

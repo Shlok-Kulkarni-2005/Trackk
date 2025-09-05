@@ -32,25 +32,25 @@ const getDateRange = (reportType: string, startDateParam?: string, endDateParam?
   return { startDate, endDate };
 };
 
-function formatDateTimeNoMs(date) {
-  // Format as 'YYYY-MM-DD HH:mm:ss'
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
+// function formatDateTimeNoMs(date) {
+//   // Format as 'YYYY-MM-DD HH:mm:ss'
+//   const pad = (n) => n.toString().padStart(2, '0');
+//   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+// }
 
-function getIsoDateTimeToSecond(date) {
-  // Returns 'YYYY-MM-DDTHH:mm:ss' (ISO, no ms)
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
+// function getIsoDateTimeToSecond(date) {
+//   // Returns 'YYYY-MM-DDTHH:mm:ss' (ISO, no ms)
+//   const pad = (n) => n.toString().padStart(2, '0');
+//   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+// }
 
-function formatTimeHHMMNoSeconds(dateStr) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const pad = n => n.toString().padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-function getMachineNumber(machineName) {
+// function formatTimeHHMMNoSeconds(dateStr) {
+//   if (!dateStr) return '';
+//   const date = new Date(dateStr);
+//   const pad = n => n.toString().padStart(2, '0');
+//   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// }
+function getMachineNumber(machineName: string) {
   if (!machineName) return '';
   const match = machineName.match(/#(\d+)/);
   if (match) return match[1];
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     const { startDate, endDate } = getDateRange(reportType, startDateParam, endDateParam);
     
     const workbook = new ExcelJS.Workbook();
-    let worksheet;
+    let worksheet: any;
 
     if (reportType === 'processWise') {
       // Operation/machine-wise report
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       // All time formatting for ON/OFF is handled below. Always output as HH:mm (no seconds, no ms)
       // ---
       // Get all jobs for the operation type and date range
-      const jobGroups = {};
+              const jobGroups: { [key: string]: any[] } = {};
       jobs.forEach(job => {
         // Only skip if product or machine is truly missing
         if (!job.product || !job.machine) {
@@ -126,16 +126,16 @@ export async function GET(req: NextRequest) {
         if (!jobGroups[key]) jobGroups[key] = [];
         jobGroups[key].push(job);
       });
-      const allRows = [];
+      const allRows: any[] = [];
       Object.values(jobGroups).forEach((group) => {
         group.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         // Separate ON and OFF jobs
-        let onJobs = group.filter(j => j.state === 'ON');
-        let offJobs = group.filter(j => j.state === 'OFF');
+        const onJobs = group.filter(j => j.state === 'ON');
+        const offJobs = group.filter(j => j.state === 'OFF');
         let onIdx = 0, offIdx = 0;
         while (onIdx < onJobs.length && offIdx < offJobs.length) {
-          let onJob = onJobs[onIdx];
-          let offJob = offJobs[offIdx];
+          const onJob = onJobs[onIdx];
+          const offJob = offJobs[offIdx];
           
           // Log each ON/OFF pair
           console.log('DEBUG: PAIRING ON/OFF', {
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
           offTime.setSeconds(0, 0);
           const dateStr = onTime.toISOString().split('T')[0];
           // Always use getMachineNumber
-          const machineNumber = getMachineNumber(onJob.machine.name);
+          // const machineNumber = getMachineNumber(onJob.machine.name);
           const onTimeStr = `${onTime.getHours().toString().padStart(2, '0')}:${onTime.getMinutes().toString().padStart(2, '0')}`;
           const offTimeStr = `${offTime.getHours().toString().padStart(2, '0')}:${offTime.getMinutes().toString().padStart(2, '0')}`;
           const totalTime = Math.round((offTime.getTime() - onTime.getTime()) / 60000);
@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
         }
         // Any remaining ON jobs (not yet OFF)
         for (; onIdx < onJobs.length; onIdx++) {
-          let onJob = onJobs[onIdx];
+          const onJob = onJobs[onIdx];
           // Log unmatched ON job
           console.log('DEBUG: UNMATCHED ON JOB', {
             onId: onJob.id, onCreatedAt: onJob.createdAt
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
         }
       });
       // Group rows by all parameters
-      const groupedRowsObj = {};
+              const groupedRowsObj: { [key: string]: any } = {};
       for (const row of allRows) {
         const groupKey = [
           row.productId,
@@ -223,7 +223,7 @@ export async function GET(req: NextRequest) {
             onTime: onTimeStr,
             offTime: offTimeStr,
             totalTime: '',
-            quantity: job.quantity || 1
+            quantity: 1
           });
         });
         addedRows = jobs.length;
@@ -280,7 +280,7 @@ export async function GET(req: NextRequest) {
       const headerRow = worksheet.getRow(1);
       headerRow.font = { bold: true };
       headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } }; // Light gray background
-      headerRow.eachCell((cell) => {
+      headerRow.eachCell((cell: any) => {
         cell.border = { 
           top: { style: 'thin' }, 
           bottom: { style: 'thin' }, 
@@ -317,7 +317,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Group jobs by machine and product for better organization
-      const machineGroups = {};
+              const machineGroups: { [key: string]: any } = {};
       allJobs.forEach(job => {
         if (!job.machine || !job.product) return;
         
@@ -347,7 +347,7 @@ export async function GET(req: NextRequest) {
         }
         
         machineGroups[machineName].products[productName].jobs.push(job);
-        machineGroups[machineName].products[productName].totalQuantity += (job.quantity || 1);
+        machineGroups[machineName].products[productName].totalQuantity += 1;
         
         if (job.state === 'ON') {
           machineGroups[machineName].products[productName].onTimes.push(new Date(job.createdAt));
@@ -388,8 +388,8 @@ export async function GET(req: NextRequest) {
           // Try to pair ON/OFF jobs first
           if (onJobs.length > 0 && offJobs.length > 0) {
             // Sort jobs by time to find the best pairs
-            const sortedOnJobs = onJobs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            const sortedOffJobs = offJobs.sort((a, b) => new Date(a.updatedAt || a.createdAt).getTime() - new Date(b.updatedAt || b.createdAt).getTime());
+            const sortedOnJobs = onJobs.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const sortedOffJobs = offJobs.sort((a: any, b: any) => new Date(a.updatedAt || a.createdAt).getTime() - new Date(b.updatedAt || b.createdAt).getTime());
             
             // Find the earliest ON and latest OFF time
             const earliestOnTime = new Date(sortedOnJobs[0].createdAt);
@@ -400,21 +400,21 @@ export async function GET(req: NextRequest) {
             
             // Calculate total time
             if (latestOffTime > earliestOnTime) {
-              totalTime = Math.round((latestOffTime.getTime() - earliestOnTime.getTime()) / 60000);
+              totalTime = Math.round((latestOffTime.getTime() - earliestOnTime.getTime()) / 60000).toString();
             }
           } else if (onJobs.length > 0) {
             // Only ON jobs exist
-            const earliestOnTime = new Date(Math.min(...onTimes.map(t => t.getTime())));
+            const earliestOnTime = new Date(Math.min(...onTimes.map((t: Date) => t.getTime())));
             onTimeStr = `${earliestOnTime.getHours().toString().padStart(2, '0')}:${earliestOnTime.getMinutes().toString().padStart(2, '0')}`;
             
             // Try to estimate OFF time from the latest ON job + some buffer
-            const latestOnJob = onJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+            const latestOnJob = onJobs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
             const estimatedOffTime = new Date(latestOnJob.createdAt.getTime() + 30 * 60000); // Add 30 minutes buffer
             offTimeStr = `${estimatedOffTime.getHours().toString().padStart(2, '0')}:${estimatedOffTime.getMinutes().toString().padStart(2, '0')}`;
             
           } else if (offJobs.length > 0) {
             // Only OFF jobs exist - try to estimate ON time
-            const latestOffTime = new Date(Math.max(...offTimes.map(t => t.getTime())));
+            const latestOffTime = new Date(Math.max(...offTimes.map((t: Date) => t.getTime())));
             offTimeStr = `${latestOffTime.getHours().toString().padStart(2, '0')}:${latestOffTime.getMinutes().toString().padStart(2, '0')}`;
             
             // Estimate ON time by subtracting some time from OFF time
@@ -422,7 +422,7 @@ export async function GET(req: NextRequest) {
             onTimeStr = `${estimatedOnTime.getHours().toString().padStart(2, '0')}:${estimatedOnTime.getMinutes().toString().padStart(2, '0')}`;
             
             // Calculate estimated total time
-            totalTime = 30; // Estimated 30 minutes
+            totalTime = '30'; // Estimated 30 minutes
           }
           
           worksheet.addRow([

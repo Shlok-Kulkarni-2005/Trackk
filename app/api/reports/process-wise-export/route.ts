@@ -4,12 +4,12 @@ import ExcelJS from 'exceljs';
 
 const prisma = new PrismaClient();
 
-function formatTimeHHMM(dateStr: string) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+// function formatTimeHHMM(dateStr: string) {
+//   if (!dateStr) return '';
+//   const date = new Date(dateStr);
+//   const pad = (n: number) => n.toString().padStart(2, '0');
+//   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// }
 
 function getMachineNumber(machineName: string) {
   if (!machineName) return '';
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'asc' },
     });
     // Normalize function for machine names
-    function normalizeMachineName(name) {
+    function normalizeMachineName(name: string) {
       return name.split('#')[0].replace(/[-\s]+/g, ' ').trim().toLowerCase();
     }
     const normalizedOperationType = normalizeMachineName(operationType);
@@ -77,10 +77,10 @@ export async function GET(req: NextRequest) {
     // For every job with state OFF, use createdAt as ON Time and updatedAt as OFF Time, and show total time in minutes only
     const allRows: any[] = [];
     // Helper to format time as HH:MM (ignore seconds)
-    function formatTimeHHMMOnly(date) {
+    function formatTimeHHMMOnly(date: string | Date) {
       if (!date) return '';
       const d = new Date(date);
-      const pad = (n) => n.toString().padStart(2, '0');
+      const pad = (n: number) => n.toString().padStart(2, '0');
       return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
@@ -89,8 +89,8 @@ export async function GET(req: NextRequest) {
       group.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       group.forEach((job: any) => {
         if (job.state === 'OFF') {
-          const normalizedProductName = job.product?.name?.trim().toLowerCase() || '';
-          const normalizedMachineName = normalizeMachineName(job.machine?.name || '');
+          // const normalizedProductName = job.product?.name?.trim().toLowerCase() || '';
+          // const normalizedMachineName = normalizeMachineName(job.machine?.name || '');
           const dateStr = new Date(job.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
           const machineNumber = getMachineNumber(job.machine.name);
           const totalMinutes = Math.round((new Date(job.updatedAt || job.createdAt).getTime() - new Date(job.createdAt).getTime()) / 60000) || 0;
@@ -134,19 +134,19 @@ export async function GET(req: NextRequest) {
     // Prepare final result: show earliest ON Time and latest OFF Time for each group, and compute total time as their difference
     const result = Array.from(groupedRows.values()).map(group => {
       // Find earliest ON and latest OFF as Date objects
-      const onTimes = group.onTimes.filter(Boolean).map(t => {
+      const onTimes = group.onTimes.filter(Boolean).map((t: string) => {
         const [h, m] = t.split(':');
         return new Date(`${group.date}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00`);
       });
-      const offTimes = group.offTimes.filter(Boolean).map(t => {
+      const offTimes = group.offTimes.filter(Boolean).map((t: string) => {
         const [h, m] = t.split(':');
         return new Date(`${group.date}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00`);
       });
-      const earliestOn = onTimes.length ? new Date(Math.min(...onTimes.map(d => d.getTime()))) : null;
-      const latestOff = offTimes.length ? new Date(Math.max(...offTimes.map(d => d.getTime()))) : null;
+      const earliestOn = onTimes.length ? new Date(Math.min(...onTimes.map((d: Date) => d.getTime()))) : null;
+      const latestOff = offTimes.length ? new Date(Math.max(...offTimes.map((d: Date) => d.getTime()))) : null;
       let totalTime = '';
       if (earliestOn && latestOff && latestOff > earliestOn) {
-        totalTime = Math.round((latestOff.getTime() - earliestOn.getTime()) / 60000);
+        totalTime = Math.round((latestOff.getTime() - earliestOn.getTime()) / 60000).toString();
       }
       return {
         ...group,
@@ -157,21 +157,21 @@ export async function GET(req: NextRequest) {
     });
 
     // Helper to format time as HH:MM:SS
-    function formatTimeHMS(dateOrString: Date | string | undefined) {
-      if (!dateOrString) return '';
-      const date = new Date(dateOrString);
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    }
+    // function formatTimeHMS(dateOrString: Date | string | undefined) {
+    //   if (!dateOrString) return '';
+    //   const date = new Date(dateOrString);
+    //   const pad = (n: number) => n.toString().padStart(2, '0');
+    //   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    // }
     // Helper to format total time as HH:MM:SS
-    function formatTotalTimeHMS(totalMinutes: number) {
-      if (!totalMinutes || isNaN(totalMinutes) || totalMinutes <= 0) return '';
-      const totalSeconds = Math.round(totalMinutes * 60);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
+    // function formatTotalTimeHMS(totalMinutes: number) {
+    //   if (!totalMinutes || isNaN(totalMinutes) || totalMinutes <= 0) return '';
+    //   const totalSeconds = Math.round(totalMinutes * 60);
+    //   const hours = Math.floor(totalSeconds / 3600);
+    //   const minutes = Math.floor((totalSeconds % 3600) / 60);
+    //   const seconds = totalSeconds % 60;
+    //   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    // }
 
     // Create Excel
     const workbook = new ExcelJS.Workbook();

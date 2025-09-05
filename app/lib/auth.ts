@@ -7,9 +7,9 @@ const JWT_EXPIRES_IN = '7d';
 
 export class AuthError extends Error implements AppError {
   code: string;
-  details?: any;
+  details?: Record<string, unknown>;
 
-  constructor(message: string, code: string = 'AUTH_ERROR', details?: any) {
+  constructor(message: string, code: string = 'AUTH_ERROR', details?: Record<string, unknown>) {
     super(message);
     this.name = 'AuthError';
     this.code = code;
@@ -32,7 +32,7 @@ export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
     if (error instanceof AuthError) {
       throw error;
     }
-    throw new AuthError('Failed to generate token', 'TOKEN_GENERATION_ERROR', error);
+    throw new AuthError('Failed to generate token', 'TOKEN_GENERATION_ERROR', { error: String(error) });
   }
 }
 
@@ -59,14 +59,14 @@ export function verifyToken(token: string): JWTPayload {
     }
     
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new AuthError('Invalid token', 'INVALID_TOKEN', error.message);
+      throw new AuthError('Invalid token', 'INVALID_TOKEN', { message: error.message });
     }
     
     if (error instanceof jwt.TokenExpiredError) {
       throw new AuthError('Token has expired', 'TOKEN_EXPIRED');
     }
     
-    throw new AuthError('Token verification failed', 'TOKEN_VERIFICATION_ERROR', error);
+    throw new AuthError('Token verification failed', 'TOKEN_VERIFICATION_ERROR', { error: String(error) });
   }
 }
 
@@ -122,7 +122,7 @@ export function refreshTokenIfNeeded(token: string, thresholdMinutes: number = 6
 
     if (expirationTime <= thresholdTime) {
       // Token will expire soon, generate new one
-      const { iat, exp, ...payload } = decoded;
+      const { ...payload } = decoded;
       return generateToken(payload);
     }
 
